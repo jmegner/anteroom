@@ -1,0 +1,244 @@
+<Window x:Class="Anteroom.App.UI.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:Anteroom.App.UI"
+        Title="Anteroom"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        ResizeMode="NoResize"
+        SizeToContent="Height"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Ideal"
+        FontFamily="Segoe UI"
+        Width="320">
+
+    <Window.Resources>
+        <ui:AttentionBrushConverter x:Key="AttentionBrush" />
+        <ui:EmptyToCollapsedConverter x:Key="EmptyToCollapsed" />
+        <ui:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+        <ui:ExpandGlyphConverter x:Key="ExpandGlyph" />
+
+        <SolidColorBrush x:Key="Surface" Color="#F21C1D21" />
+        <SolidColorBrush x:Key="SurfaceRaised" Color="#26282E" />
+        <SolidColorBrush x:Key="Hairline" Color="#33FFFFFF" />
+        <SolidColorBrush x:Key="Text" Color="#ECEEF1" />
+        <SolidColorBrush x:Key="TextMuted" Color="#9BA1AA" />
+        <SolidColorBrush x:Key="Accent" Color="#F2A04B" />
+
+        <Style x:Key="FlatButton" TargetType="Button">
+            <Setter Property="Foreground" Value="{StaticResource Text}" />
+            <Setter Property="Background" Value="#2E313A" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome" CornerRadius="5" Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#3B3F4A" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="GlyphButton" TargetType="Button" BasedOn="{StaticResource FlatButton}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+
+        <!-- One session tab: header row always visible, body shown when expanded. -->
+        <DataTemplate x:Key="SessionTemplate">
+            <Border Margin="0,0,0,6" CornerRadius="7" Background="{StaticResource SurfaceRaised}"
+                    BorderBrush="{StaticResource Hairline}" BorderThickness="1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" CornerRadius="7,0,0,7"
+                            Background="{Binding Attention, Converter={StaticResource AttentionBrush}}" />
+
+                    <StackPanel Grid.Column="1" Margin="10,8,8,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource Text}"
+                                           FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding SubTitle}" Foreground="{StaticResource TextMuted}"
+                                           FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,1,0,0"
+                                           Visibility="{Binding SubTitle, Converter={StaticResource EmptyToCollapsed}}" />
+                            </StackPanel>
+
+                            <TextBlock Grid.Column="1" Text="{Binding WaitingFor}" Foreground="{StaticResource TextMuted}"
+                                       FontSize="10" VerticalAlignment="Center" Margin="6,0" />
+
+                            <Button Grid.Column="2" Style="{StaticResource GlyphButton}"
+                                    Content="{Binding IsExpanded, Converter={StaticResource ExpandGlyph}}"
+                                    Click="OnToggleExpand" ToolTip="Expand or collapse this session" />
+                        </Grid>
+
+                        <StackPanel Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{Binding AttentionLabel}" Foreground="{Binding Attention, Converter={StaticResource AttentionBrush}}"
+                                       FontSize="10" FontWeight="SemiBold" Margin="0,8,0,3"
+                                       Visibility="{Binding NeedsAttention, Converter={StaticResource BoolToVisibility}}" />
+
+                            <TextBlock Text="{Binding PendingText}" Foreground="{StaticResource Text}"
+                                       FontSize="12" TextWrapping="Wrap" MaxHeight="90"
+                                       Visibility="{Binding HasPermissionRequest, Converter={StaticResource BoolToVisibility}, ConverterParameter=invert}" />
+
+                            <!-- Held tool call: the full input, then the decision buttons. -->
+                            <Border Visibility="{Binding HasPermissionRequest, Converter={StaticResource BoolToVisibility}}"
+                                    Background="#1A1B1F" CornerRadius="5" Padding="8,6" Margin="0,8,0,0"
+                                    BorderBrush="#4D3B22" BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Permission.ToolName}" Foreground="{StaticResource Accent}"
+                                               FontSize="10" FontWeight="SemiBold" />
+                                    <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" Margin="0,3,0,0">
+                                        <TextBlock Text="{Binding Permission.ToolInputFull}" Foreground="{StaticResource Text}"
+                                                   FontFamily="Cascadia Mono, Consolas, monospace" FontSize="11"
+                                                   TextWrapping="Wrap" />
+                                    </ScrollViewer>
+                                    <TextBlock Text="{Binding Permission.Countdown}" Foreground="{StaticResource TextMuted}"
+                                               FontSize="10" Margin="0,5,0,0" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                        <Button Style="{StaticResource FlatButton}" Content="Allow" Click="OnAllow"
+                                                Background="#2F5D3F" ToolTip="Run this call without asking in the terminal" />
+                                        <Button Style="{StaticResource FlatButton}" Content="Deny" Margin="6,0,0,0"
+                                                Click="OnDeny" Background="#5D2F2F"
+                                                ToolTip="Block this call and tell Claude why" />
+                                        <Button Style="{StaticResource GlyphButton}" Content="Always allow" Margin="6,0,0,0"
+                                                Click="OnAlwaysAllow"
+                                                ToolTip="Allow this now, and every future call with exactly this input" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button Style="{StaticResource FlatButton}" Content="Open" Click="OnOpenSession"
+                                        ToolTip="{Binding OpenHint}" />
+                                <Button Style="{StaticResource FlatButton}" Content="Dismiss" Margin="6,0,0,0"
+                                        Click="OnDismissSession"
+                                        Visibility="{Binding NeedsAttention, Converter={StaticResource BoolToVisibility}}" />
+                                <Button Style="{StaticResource GlyphButton}" Content="Copy resume" Margin="6,0,0,0"
+                                        Click="OnCopyResume" ToolTip="Copy 'claude --resume &lt;id&gt;' to the clipboard" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <!-- Collapsed state: a slim handle, so an idle Anteroom is not screen clutter. -->
+        <Border x:Name="Handle" Visibility="Collapsed" Cursor="Hand"
+                CornerRadius="7" Background="{StaticResource Surface}"
+                BorderBrush="{StaticResource Hairline}" BorderThickness="1"
+                Padding="10,6" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                MouseLeftButtonUp="OnHandleClick">
+            <StackPanel Orientation="Horizontal">
+                <Ellipse Width="8" Height="8" Fill="{StaticResource Hairline}" VerticalAlignment="Center" />
+                <TextBlock x:Name="HandleText" Text="Anteroom" Foreground="{StaticResource TextMuted}"
+                           FontSize="11" Margin="7,0,0,0" VerticalAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <!-- Expanded panel -->
+        <Border x:Name="Panel" CornerRadius="9" Background="{StaticResource Surface}"
+                BorderBrush="{StaticResource Hairline}" BorderThickness="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Width grips; only the one on the panel's inner edge is shown. -->
+                <Thumb x:Name="GripLeft" Grid.Column="0" Width="5" Cursor="SizeWE" Opacity="0"
+                       DragDelta="OnGripDrag" DragCompleted="OnGripDone" Background="Transparent" />
+                <Thumb x:Name="GripRight" Grid.Column="2" Width="5" Cursor="SizeWE" Opacity="0"
+                       DragDelta="OnGripDrag" DragCompleted="OnGripDone" Background="Transparent" />
+
+                <DockPanel Grid.Column="1" Margin="8,8,8,8">
+                    <Grid DockPanel.Dock="Top" Margin="2,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock x:Name="HeaderText" Grid.Column="0" Text="Anteroom"
+                                   Foreground="{StaticResource Text}" FontSize="12" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" />
+
+                        <Button Grid.Column="1" Style="{StaticResource GlyphButton}" Content="Clear all"
+                                Click="OnDismissAll" ToolTip="Clear every star without opening anything" />
+                        <Button Grid.Column="2" Style="{StaticResource GlyphButton}" Content="⚙"
+                                Click="OnOpenSettings" ToolTip="Advanced settings" />
+                        <Button Grid.Column="3" Style="{StaticResource GlyphButton}" Content="✕"
+                                Click="OnCollapse" ToolTip="Collapse to the handle" />
+                    </Grid>
+
+                    <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel>
+                            <ItemsControl x:Name="AttentionList" ItemTemplate="{StaticResource SessionTemplate}" />
+
+                            <TextBlock x:Name="EmptyState" Text="No sessions yet. Start Claude Code and its tab appears here."
+                                       Foreground="{StaticResource TextMuted}" FontSize="11" TextWrapping="Wrap"
+                                       Margin="4,6,4,10" Visibility="Collapsed" />
+
+                            <ToggleButton x:Name="IdleToggle" Click="OnToggleIdle" Cursor="Hand"
+                                          Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Stretch"
+                                          Foreground="{StaticResource TextMuted}" Visibility="Collapsed">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent" Padding="4,4">
+                                            <ContentPresenter />
+                                        </Border>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="IdleLabel" Grid.Column="0" Text="idle sessions"
+                                               Foreground="{StaticResource TextMuted}" FontSize="11" />
+                                    <TextBlock x:Name="IdleGlyph" Grid.Column="1" Text="▾"
+                                               Foreground="{StaticResource TextMuted}" FontSize="11" />
+                                </Grid>
+                            </ToggleButton>
+
+                            <ItemsControl x:Name="IdleList" ItemTemplate="{StaticResource SessionTemplate}"
+                                          Opacity="0.72" Visibility="Collapsed" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>Anteroom</AssemblyName>
+    <RootNamespace>Anteroom.App</RootNamespace>
+    <UseWPF>true</UseWPF>
+    <!-- WinForms comes along for NotifyIcon, Screen enumeration and System.Drawing icon rendering. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Anteroom.Shared\Anteroom.Shared.csproj" />
+    <!-- The shim is not linked against, it just has to land beside Anteroom.exe. -->
+    <ProjectReference Include="..\Anteroom.Hook\Anteroom.Hook.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <!-- Claude's settings.json points at anteroom-hook.exe next to the app, so keep them together. -->
+  <Target Name="CopyHookShim" AfterTargets="Build">
+    <ItemGroup>
+      <HookShimFiles Include="$(MSBuildThisFileDirectory)..\Anteroom.Hook\bin\$(Configuration)\$(TargetFramework)\anteroom-hook.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(HookShimFiles)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

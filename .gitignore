@@ -1,0 +1,45 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+*.dll
+*.pdb
+*.exe
+
+# Anteroom's own publish output
+dist/
+artifacts/
+*.zip
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.user
+*.suo
+*.userprefs
+*.sln.docstates
+.vscode/
+*.swp
+
+# NuGet
+*.nupkg
+packages/
+.nuget/
+
+# Test and coverage output
+TestResults/
+coverage/
+*.trx
+*.coverage
+
+# Claude Code local overrides (machine-specific paths, never shared)
+.claude/settings.local.json
+
+# OS junk
+Thumbs.db
+desktop.ini
+.DS_Store

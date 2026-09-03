@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>anteroom-hook</AssemblyName>
+    <RootNamespace>Anteroom.Hook</RootNamespace>
+    <!-- WinExe so the shim never flashes a console window in the user's terminal. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <TieredPGO>true</TieredPGO>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Anteroom.Shared\Anteroom.Shared.csproj" />
+  </ItemGroup>
+</Project>

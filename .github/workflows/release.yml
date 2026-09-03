@@ -1,0 +1,155 @@
+name: Release
+
+# Manual only: Actions -> Release -> Run workflow, then type the version.
+# The workflow creates the tag itself, so there is nothing to tag or push beforehand.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, without the leading v (e.g. 1.0.0)'
+        required: true
+      draft:
+        description: 'Create the release as a draft'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # WPF only builds on Windows.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so the generated changelog has something to diff against
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '7.0.x'
+
+      - name: Work out the version
+        id: version
+        shell: pwsh
+        run: |
+          # A leading v is accepted and stripped, so both 1.0.0 and v1.0.0 work.
+          $version = '${{ inputs.version }}'.Trim().TrimStart('v')
+
+          # MSBuild rejects anything that is not Major.Minor.Patch, so fail here rather than
+          # halfway through the build.
+          if ($version -notmatch '^[0-9]+[.][0-9]+[.][0-9]+$') {
+            throw "Version '$version' must look like 1.0.0"
+          }
+
+          # gh would fail late and cryptically on a duplicate tag; say so now instead.
+          $tag = "v$version"
+          if (git tag --list $tag) {
+            throw "Tag $tag already exists. Pick a new version, or delete the tag and its release."
+          }
+
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=$tag"         >> $env:GITHUB_OUTPUT
+          Write-Host "Building Anteroom $version as $tag"
+
+      - name: Build and test-load the solution
+        shell: pwsh
+        run: dotnet build Anteroom.sln -c Release -p:Version=${{ steps.version.outputs.version }}
+
+      # Two flavours: the small one for machines that already have .NET, and the standalone one
+      # for machines that do not. Same publish script the project uses locally.
+      - name: Publish (framework-dependent)
+        shell: pwsh
+        run: ./publish.ps1 -Output "$env:GITHUB_WORKSPACE/artifacts/framework-dependent" -Version ${{ steps.version.outputs.version }}
+
+      - name: Publish (self-contained)
+        shell: pwsh
+        run: ./publish.ps1 -Output "$env:GITHUB_WORKSPACE/artifacts/self-contained" -Version ${{ steps.version.outputs.version }} -SelfContained
+
+      - name: Check both binaries are in each package
+        shell: pwsh
+        run: |
+          foreach ($flavour in 'framework-dependent', 'self-contained') {
+            foreach ($file in 'Anteroom.exe', 'anteroom-hook.exe') {
+              $path = "artifacts/$flavour/$file"
+              if (-not (Test-Path $path)) { throw "$path is missing from the $flavour package" }
+            }
+          }
+          # The shim path is written into settings.json as an absolute path, so the two binaries
+          # must ship together or Connect points at nothing.
+          Write-Host 'Both binaries present in both packages.'
+
+      - name: Package
+        id: package
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          New-Item -ItemType Directory -Force -Path artifacts/zips | Out-Null
+
+          $slim = "artifacts/zips/Anteroom-$version-win-x64.zip"
+          $full = "artifacts/zips/Anteroom-$version-win-x64-self-contained.zip"
+
+          Compress-Archive -Path artifacts/framework-dependent/* -DestinationPath $slim
+          Compress-Archive -Path artifacts/self-contained/*      -DestinationPath $full
+
+          Get-ChildItem artifacts/zips | ForEach-Object {
+            Write-Host ("{0}  {1:N1} MB" -f $_.Name, ($_.Length / 1MB))
+          }
+
+      - name: Write the release notes
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          @(
+            "## Install",
+            "",
+            "1. Download **Anteroom-$version-win-x64.zip** (needs the [.NET 7 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/7.0)),",
+            "   or **Anteroom-$version-win-x64-self-contained.zip** if you would rather not install a runtime.",
+            "2. Unzip somewhere permanent — the folder path is written into your Claude config.",
+            "3. Run ``Anteroom.exe``, then **Advanced settings -> Connect to Claude Code**.",
+            "4. Open a new Claude Code session. Hooks are read when a session starts, so existing sessions will not report in.",
+            "",
+            "## Upgrading",
+            "",
+            "Unzip over the top of the old folder and restart Anteroom. If you move it somewhere new,",
+            "the settings dialog will show **Needs updating** — click **Update** to re-register the hook path.",
+            "",
+            "## What is in the box",
+            "",
+            "| File | What it is |",
+            "| --- | --- |",
+            "| ``Anteroom.exe`` | The tray app |",
+            "| ``anteroom-hook.exe`` | The shim Claude Code runs on each hook event |",
+            "",
+            "Both must stay in the same folder.",
+            ""
+          ) | Set-Content -Path release-notes.md -Encoding utf8
+
+      - name: Create the GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ steps.version.outputs.tag }}'
+          $draft = '${{ inputs.draft }}' -eq 'true'
+
+          # $args is an automatic variable, and a nested array would not splat cleanly - so build
+          # one flat list of strings under our own name.
+          $zips = Get-ChildItem artifacts/zips/*.zip | ForEach-Object { $_.FullName }
+          $ghArgs = @('release', 'create', $tag) + $zips + @(
+            '--title', "Anteroom $tag",
+            '--notes-file', 'release-notes.md',
+            '--target', '${{ github.sha }}'
+          )
+          if ($draft) { $ghArgs += '--draft' }
+
+          gh @ghArgs
+          if ($LASTEXITCODE -ne 0) { throw 'gh release create failed' }
+
+      - name: Keep the packages as build artifacts too
+        uses: actions/upload-artifact@v4
+        with:
+          name: anteroom-${{ steps.version.outputs.version }}
+          path: artifacts/zips/*.zip
+          retention-days: 30
