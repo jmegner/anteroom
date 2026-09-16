@@ -52,6 +52,23 @@ public sealed class SettingsService
         {
             // Losing a preference is survivable; crashing the tray app is not.
         }
-        Changed?.Invoke(Current);
+        RaiseChanged();
+    }
+
+    /// <summary>
+    /// Settings get saved from background work too - the update check stamps its own timestamp -
+    /// and every subscriber here touches UI. Marshal once, centrally, rather than asking each
+    /// caller to remember.
+    /// </summary>
+    private void RaiseChanged()
+    {
+        var handler = Changed;
+        if (handler is null) return;
+
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+            dispatcher.BeginInvoke(new Action(() => handler(Current)));
+        else
+            handler(Current);
     }
 }

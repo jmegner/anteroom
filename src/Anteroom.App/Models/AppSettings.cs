@@ -47,6 +47,20 @@ public sealed class AppSettings
     /// <summary>Tool names seen in PreToolUse, so the settings list grows to match reality.</summary>
     public List<string> KnownTools { get; set; } = new();
 
+    // --- Updates -------------------------------------------------------------------------------
+    // Checking is automatic; installing never is. A background check only raises a notification,
+    // because silently replacing the binaries someone is relying on is not a decision to take for
+    // them.
+
+    public bool CheckUpdatesPeriodically { get; set; } = true;
+
+    public int UpdateCheckIntervalHours { get; set; } = 24;
+
+    public DateTime LastUpdateCheckUtc { get; set; } = DateTime.MinValue;
+
+    /// <summary>A version the user asked not to be reminded about.</summary>
+    public string? SkippedUpdateVersion { get; set; }
+
     /// <summary>True when this exact tool call should be held for a decision.</summary>
     public bool IsToolGated(string? toolName)
     {
@@ -85,7 +99,11 @@ public sealed class AppSettings
         GatedTools = new List<string>(GatedTools),
         PermissionHoldSeconds = PermissionHoldSeconds,
         AlwaysAllowRules = new List<string>(AlwaysAllowRules),
-        KnownTools = new List<string>(KnownTools)
+        KnownTools = new List<string>(KnownTools),
+        CheckUpdatesPeriodically = CheckUpdatesPeriodically,
+        UpdateCheckIntervalHours = UpdateCheckIntervalHours,
+        LastUpdateCheckUtc = LastUpdateCheckUtc,
+        SkippedUpdateVersion = SkippedUpdateVersion
     };
 
     /// <summary>Hooks Anteroom will not let you disable: without these the tab list cannot exist.</summary>

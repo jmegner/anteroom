@@ -14,17 +14,29 @@ public partial class App : System.Windows.Application
     private SessionStore _store = null!;
     private ClaudeSetupService _setup = null!;
     private SoundService _sound = null!;
+    private UpdateService _updates = null!;
     private PermissionBroker _permissions = null!;
     private IpcServer _ipc = null!;
     private TrayIconService _tray = null!;
     private OverlayWindow? _overlay;
     private SettingsWindow? _settingsWindow;
+    private UpdateWindow? _updateWindow;
+    private UpdateInfo? _pendingUpdate;
+    private bool _checkingForUpdates;
     private DispatcherTimer? _housekeeping;
     private int _ticks;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // An update runs the newly unpacked copy in applier mode, to swap files this process holds
+        // open. It has no UI and must not take the single-instance mutex, so it is handled first.
+        if (UpdateApplier.TryRun(e.Args))
+        {
+            Shutdown();
+            return;
+        }
 
         // One tray icon, one pipe server. A second launch just exits.
         _singleInstance = new Mutex(initiallyOwned: true, "Anteroom.SingleInstance", out bool isFirst);
@@ -50,6 +62,9 @@ public partial class App : System.Windows.Application
         _setup = new ClaudeSetupService(_settings);
         _sound = new SoundService(_settings);
 
+        _updates = new UpdateService(_settings);
+        UpdateService.PruneStaging(); // clear staging left behind by a previous update
+
         _permissions = new PermissionBroker(_settings, _store, action => Dispatcher.BeginInvoke(action));
         _permissions.PermissionRequested += OnAttentionRaised;
 
@@ -58,6 +73,8 @@ public partial class App : System.Windows.Application
         _tray.ToggleTabsRequested += ToggleOverlay;
         _tray.DisplayTabsChanged += ApplyDisplayTabs;
         _tray.ExitRequested += Quit;
+        _tray.CheckUpdatesRequested += () => CheckForUpdates(userInitiated: true);
+        _tray.UpdateNotificationClicked += ShowPendingUpdate;
 
         _store.Changed += OnStoreChanged;
         _store.AttentionRaised += OnAttentionRaised;
@@ -85,6 +102,10 @@ public partial class App : System.Windows.Application
         {
             foreach (var session in _store.Sessions) session.RefreshTimestamps();
             if (++_ticks % 30 == 0) _store.Sweep();
+
+            // Shortly after launch, then on a slow beat; the service decides whether it is due.
+            if ((_ticks == 60 || _ticks % 900 == 0) && _updates.IsCheckDue())
+                CheckForUpdates(userInitiated: false);
         };
         _housekeeping.Start();
 
@@ -162,6 +183,7 @@ public partial class App : System.Windows.Application
         }
 
         _settingsWindow = new SettingsWindow(_settings, _setup);
+        _settingsWindow.CheckUpdatesRequested += () => CheckForUpdates(userInitiated: true);
         _settingsWindow.Closed += (_, _) =>
         {
             _settingsWindow = null;
@@ -171,6 +193,68 @@ public partial class App : System.Windows.Application
         };
         _settingsWindow.Show();
         _settingsWindow.Activate();
+    }
+
+    /// <summary>
+    /// Checks GitHub. A background check only notifies; only an explicit ask opens the window.
+    /// </summary>
+    private async void CheckForUpdates(bool userInitiated)
+    {
+        if (_checkingForUpdates) return;
+        _checkingForUpdates = true;
+
+        try
+        {
+            var result = await _updates.CheckAsync();
+            Log.Write($"update check: {result.Status} latest={result.Update?.Version.ToString() ?? "-"} " +
+                      $"current={UpdateService.CurrentVersion} userInitiated={userInitiated}");
+
+            if (result.Status == UpdateStatus.Available && result.Update is not null)
+            {
+                _pendingUpdate = result.Update;
+
+                bool skipped = string.Equals(_settings.Current.SkippedUpdateVersion,
+                    result.Update.Version.ToString(), StringComparison.Ordinal);
+
+                // Asking explicitly always shows what is there, even a version you skipped.
+                if (userInitiated) ShowUpdateWindow(result.Update);
+                else if (!skipped) _tray.NotifyUpdate(result.Update.Version.ToString());
+                return;
+            }
+
+            if (userInitiated) UpdateWindow.ReportNoUpdate(result);
+            else if (result.Status == UpdateStatus.Failed) Log.Write($"background update check: {result.Error}");
+        }
+        finally
+        {
+            _checkingForUpdates = false;
+        }
+    }
+
+    private void ShowPendingUpdate()
+    {
+        if (_pendingUpdate is not null) ShowUpdateWindow(_pendingUpdate);
+        else CheckForUpdates(userInitiated: true);
+    }
+
+    private void ShowUpdateWindow(UpdateInfo update)
+    {
+        if (_updateWindow is not null)
+        {
+            _updateWindow.Activate();
+            return;
+        }
+
+        _updateWindow = new UpdateWindow(_updates, _settings, update);
+        _updateWindow.ReadyToInstall += staging =>
+        {
+            // The applier waits for this process to exit before touching the install folder.
+            _updates.StartApplier(staging);
+            Quit();
+        };
+        _updateWindow.Closed += (_, _) => _updateWindow = null;
+        _updateWindow.Show();
+        _updateWindow.Activate();
     }
 
     private void Quit()

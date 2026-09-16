@@ -187,7 +187,15 @@
 
             <Border Style="{StaticResource Card}">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionTitle}" Text="GENERAL" />
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Style="{StaticResource SectionTitle}" Text="GENERAL" Margin="0" />
+                        <TextBlock x:Name="VersionLabel" Grid.Column="1" Style="{StaticResource Hint}" Margin="0" />
+                    </Grid>
+
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -199,6 +207,24 @@
                         <TextBlock Grid.Column="1" Text="Forget a session after" VerticalAlignment="Center"
                                    Margin="0,0,6,0" />
                         <ComboBox x:Name="StaleBox" Grid.Column="2" />
+                    </Grid>
+
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <CheckBox x:Name="UpdatesBox" Grid.Column="0" VerticalAlignment="Center" Margin="0"
+                                  Content="Periodically check for updates"
+                                  ToolTip="Checks the GitHub releases page in the background. Installing always needs a click."
+                                  Checked="OnUpdatesToggled" Unchecked="OnUpdatesToggled" />
+                        <TextBlock x:Name="IntervalLabel" Grid.Column="1" Text="Every" VerticalAlignment="Center"
+                                   Margin="0,0,6,0" />
+                        <ComboBox x:Name="UpdateIntervalBox" Grid.Column="2" />
+                        <Button x:Name="CheckNowButton" Grid.Column="3" Content="Check now" Padding="10,2"
+                                Margin="6,0,0,0" Click="OnCheckNow" />
                     </Grid>
                 </StackPanel>
             </Border>

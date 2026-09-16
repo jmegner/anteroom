@@ -118,6 +118,37 @@ the settings dialog detects the drift and offers **Update**.
 check without going through the tray menu. The dialog sizes itself to its content but never grows
 past the work area of the monitor it opens on; past that it scrolls.
 
+## Updating
+
+Anteroom updates itself from this repo's GitHub releases.
+
+- **Tray menu, Check for updates** asks straight away.
+- **Advanced settings, Periodically check for updates** checks in the background, daily by default.
+  A background check only raises a notification; installing always takes a click.
+
+It picks the package matching the install it is running from. A self-contained install is only ever
+offered the self-contained package, because handing it the small one would leave a build that
+cannot start without the .NET Desktop Runtime. Which flavour you have is shown beside the GENERAL
+heading in Advanced settings.
+
+The swap happens in place, so the absolute anteroom-hook.exe path in `~/.claude/settings.json`
+stays valid and your settings survive untouched.
+
+How it works, given Windows will not let a running program overwrite its own files:
+
+1. The asset is downloaded to `%LOCALAPPDATA%/Anteroom/updates` and checked before use: it must
+   contain both binaries and no path that climbs out of the extraction folder.
+2. A throwaway copy of the **currently running** build goes to `%LOCALAPPDATA%/Anteroom/applier`
+   and is started with `--apply-update`. It has to be the current build rather than the downloaded
+   one: a version predating this protocol would ignore the arguments and start as a second tray app.
+3. That copy waits for Anteroom to exit, backs the install folder up to
+   `%LOCALAPPDATA%/Anteroom/backups`, copies the new files over, and relaunches. A failed copy is
+   rolled back from that backup.
+
+Downloads are HTTPS-only and limited to GitHub hosts. Releases are not code-signed, so the checks
+are: the asset is named by this repo's own release JSON, the zip must look like an Anteroom
+package, and you confirm the version before anything downloads.
+
 ## Releasing
 
 `.github/workflows/release.yml` is triggered by hand only: **Actions -> Release -> Run workflow**,

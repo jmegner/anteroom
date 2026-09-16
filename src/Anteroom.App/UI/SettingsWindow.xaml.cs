@@ -23,6 +23,9 @@ public partial class SettingsWindow : Window
     private readonly Dictionary<string, CheckBox> _hookBoxes = new();
     private readonly Dictionary<string, CheckBox> _gateBoxes = new();
 
+    /// <summary>Check now hands off to the app, which owns the update window.</summary>
+    public event Action? CheckUpdatesRequested;
+
     public SettingsWindow(SettingsService settings, ClaudeSetupService setup)
     {
         InitializeComponent();
@@ -37,11 +40,13 @@ public partial class SettingsWindow : Window
         BuildHooks();
         BuildGating();
         BuildStaleOptions();
+        BuildUpdates();
 
         DisplayTabsBox.IsChecked = _draft.DisplayTabs;
         AlwaysOnTopBox.IsChecked = _draft.AlwaysOnTop;
         SoundBox.IsChecked = _draft.SoundEnabled;
         GatingBox.IsChecked = _draft.PermissionGatingEnabled;
+        UpdatesBox.IsChecked = _draft.CheckUpdatesPeriodically;
         StartupBox.IsChecked = _draft.StartWithWindows;
 
         UpdateEnabledStates();
@@ -195,6 +200,39 @@ public partial class SettingsWindow : Window
 
     private void OnGatingToggled(object sender, RoutedEventArgs e) => UpdateEnabledStates();
 
+    private void OnUpdatesToggled(object sender, RoutedEventArgs e) => UpdateEnabledStates();
+
+    private void BuildUpdates()
+    {
+        var choices = new[]
+        {
+            new Choice("6 hours", 6),
+            new Choice("12 hours", 12),
+            new Choice("day", 24),
+            new Choice("3 days", 72),
+            new Choice("week", 168)
+        };
+        UpdateIntervalBox.ItemsSource = choices;
+        UpdateIntervalBox.SelectedItem =
+            choices.FirstOrDefault(c => (int)c.Value! == _draft.UpdateCheckIntervalHours) ?? choices[2];
+
+        // Which flavour is installed decides which package an update downloads, so say so here.
+        VersionLabel.Text = $"v{UpdateService.CurrentVersion} \u00b7 " +
+            (UpdateService.IsSelfContainedInstall() ? "self-contained" : "framework-dependent");
+
+        var last = _draft.LastUpdateCheckUtc;
+        VersionLabel.ToolTip = last == DateTime.MinValue
+            ? "Never checked for updates yet."
+            : $"Last checked {last.ToLocalTime():g}";
+    }
+
+    private void OnCheckNow(object sender, RoutedEventArgs e)
+    {
+        // Commit first: a check started from here should respect the settings now on screen.
+        CommitDraft();
+        CheckUpdatesRequested?.Invoke();
+    }
+
     private void BuildStaleOptions()
     {
         var choices = new[] { 2, 4, 8, 12, 24 }.Select(h => new Choice($"{h} hours", h)).ToArray();
@@ -219,6 +257,10 @@ public partial class SettingsWindow : Window
 
         // The tool list only exists to serve the master switch, so it hides with it - which also
         // keeps the dialog short for everyone who leaves gating off.
+        bool updates = UpdatesBox.IsChecked == true;
+        UpdateIntervalBox.IsEnabled = updates;
+        IntervalLabel.Opacity = updates ? 1 : 0.5;
+
         bool gating = GatingBox.IsChecked == true;
         HoldBox.IsEnabled = gating;
         GatingDetail.Visibility = gating ? Visibility.Visible : Visibility.Collapsed;
@@ -315,6 +357,9 @@ public partial class SettingsWindow : Window
 
         foreach (var (hookEvent, box) in _hookBoxes)
             _draft.SetHookEnabled(hookEvent, box.IsChecked == true);
+
+        _draft.CheckUpdatesPeriodically = UpdatesBox.IsChecked == true;
+        if ((UpdateIntervalBox.SelectedItem as Choice)?.Value is int updateHours) _draft.UpdateCheckIntervalHours = updateHours;
 
         _draft.PermissionGatingEnabled = GatingBox.IsChecked == true;
         if ((HoldBox.SelectedItem as Choice)?.Value is int hold) _draft.PermissionHoldSeconds = hold;

@@ -13,8 +13,13 @@ public sealed class TrayIconService : IDisposable
     private readonly SessionStore _store;
     private readonly WinForms.NotifyIcon _icon;
     private readonly WinForms.ToolStripMenuItem _displayTabsItem;
+    private bool _balloonIsUpdate;
 
     public event Action? SettingsRequested;
+    public event Action? CheckUpdatesRequested;
+
+    /// <summary>The user clicked an update balloon rather than a session one.</summary>
+    public event Action? UpdateNotificationClicked;
     public event Action? ToggleTabsRequested;
     public event Action? DisplayTabsChanged;
     public event Action? ExitRequested;
@@ -40,6 +45,9 @@ public sealed class TrayIconService : IDisposable
         var settingsItem = new WinForms.ToolStripMenuItem("Advanced settings…");
         settingsItem.Click += (_, _) => SettingsRequested?.Invoke();
 
+        var updatesItem = new WinForms.ToolStripMenuItem("Check for updates…");
+        updatesItem.Click += (_, _) => CheckUpdatesRequested?.Invoke();
+
         var clearItem = new WinForms.ToolStripMenuItem("Clear all stars");
         clearItem.Click += (_, _) => _store.DismissAll();
 
@@ -51,6 +59,7 @@ public sealed class TrayIconService : IDisposable
         {
             _displayTabsItem,
             settingsItem,
+            updatesItem,
             new WinForms.ToolStripSeparator(),
             clearItem,
             new WinForms.ToolStripSeparator(),
@@ -63,6 +72,12 @@ public sealed class TrayIconService : IDisposable
             Visible = true,
             Text = "Anteroom",
             ContextMenuStrip = menu
+        };
+
+        // One balloon surface, two meanings, so remember which one is on screen.
+        _icon.BalloonTipClicked += (_, _) =>
+        {
+            if (_balloonIsUpdate) UpdateNotificationClicked?.Invoke();
         };
 
         _icon.MouseClick += (_, e) =>
@@ -91,10 +106,22 @@ public sealed class TrayIconService : IDisposable
         _icon.Text = text.Length > 60 ? text[..60] : text;
     }
 
+    /// <summary>Tells the user a new version exists. Clicking the balloon opens the update window.</summary>
+    public void NotifyUpdate(string version)
+    {
+        _balloonIsUpdate = true;
+        _icon.BalloonTipTitle = $"Anteroom {version} is available";
+        _icon.BalloonTipText = "Click to see what changed and install it.";
+        _icon.BalloonTipIcon = WinForms.ToolTipIcon.Info;
+        _icon.ShowBalloonTip(8000);
+    }
+
     /// <summary>Fallback surface when the tab panel is switched off: a normal Windows toast.</summary>
     public void Notify(SessionState session)
     {
         if (_settings.Current.DisplayTabs) return;
+
+        _balloonIsUpdate = false;
 
         _icon.BalloonTipTitle = $"{session.DisplayName} — {session.AttentionLabel}";
         _icon.BalloonTipText = Shorten(session.PendingText ?? "Claude is waiting for you.");
