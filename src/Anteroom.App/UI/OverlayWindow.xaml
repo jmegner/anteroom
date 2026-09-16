@@ -198,7 +198,7 @@
                                 Click="OnDismissAll" ToolTip="Clear every star without opening anything" />
                         <Button Grid.Column="2" Style="{StaticResource GlyphButton}" Content="⚙"
                                 Click="OnOpenSettings" ToolTip="Advanced settings" />
-                        <Button Grid.Column="3" Style="{StaticResource GlyphButton}" Content="✕"
+                        <Button Grid.Column="3" Style="{StaticResource GlyphButton}" Content="▾"
                                 Click="OnCollapse" ToolTip="Collapse to the handle" />
                     </Grid>
 
