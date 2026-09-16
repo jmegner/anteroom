@@ -99,12 +99,18 @@ public sealed class SessionState : INotifyPropertyChanged
     private string? _windowTitle;
     public string? WindowTitle { get => _windowTitle; set => Set(ref _windowTitle, value); }
 
+    /// <summary>
+    /// What Open will actually do, named for the host it will land in - a session is as likely to
+    /// be running in the Claude app or an editor as in a terminal. Claude is matched before VS
+    /// Code so a host named "Claude Code" is never mistaken for the editor.
+    /// </summary>
     public string OpenHint => WindowProcess switch
     {
-        null or "" => "Resume in a new terminal",
-        var p when p.Contains("Code", StringComparison.OrdinalIgnoreCase) => "Focus VS Code",
-        var p when p.Contains("WindowsTerminal", StringComparison.OrdinalIgnoreCase) => "Focus Windows Terminal",
-        _ => "Focus terminal"
+        null or "" => "Resume this session in a new terminal",
+        var p when p.Contains("claude", StringComparison.OrdinalIgnoreCase) => "Show this session in the Claude app",
+        var p when p.Contains("Code", StringComparison.OrdinalIgnoreCase) => "Show this session in VS Code",
+        var p when p.Contains("WindowsTerminal", StringComparison.OrdinalIgnoreCase) => "Show this session in Windows Terminal",
+        _ => "Show this session in its terminal"
     };
 
     private PendingPermission? _permission;
