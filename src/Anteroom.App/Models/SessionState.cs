@@ -117,9 +117,6 @@ public sealed class SessionState : INotifyPropertyChanged
 
     public bool HasPermissionRequest => Permission is { IsPending: true };
 
-    private bool _isExpanded = true;
-    public bool IsExpanded { get => _isExpanded; set => Set(ref _isExpanded, value); }
-
     private bool _isEnded;
     public bool IsEnded { get => _isEnded; set => Set(ref _isEnded, value); }
 

@@ -109,7 +109,6 @@ public sealed class SessionStore
         if (session.NeedsAttention && wasCalm)
         {
             session.AttentionSinceUtc = DateTime.UtcNow;
-            session.IsExpanded = true;
             AttentionRaised?.Invoke(session);
         }
 
@@ -200,7 +199,6 @@ public sealed class SessionStore
         session.Attention = AttentionKind.Permission;
         session.PendingText = permission.ToolInputFull;
         session.AttentionSinceUtc = DateTime.UtcNow;
-        session.IsExpanded = true;
 
         Reorder();
         Changed?.Invoke();

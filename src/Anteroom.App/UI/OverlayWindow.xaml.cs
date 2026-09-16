@@ -258,11 +258,6 @@ public partial class OverlayWindow : Window
     private static SessionState? SessionOf(object sender) =>
         (sender as FrameworkElement)?.DataContext as SessionState;
 
-    private void OnToggleExpand(object sender, RoutedEventArgs e)
-    {
-        if (SessionOf(sender) is { } session) session.IsExpanded = !session.IsExpanded;
-    }
-
     private void OnOpenSession(object sender, RoutedEventArgs e)
     {
         if (SessionOf(sender) is not { } session) return;
@@ -276,13 +271,6 @@ public partial class OverlayWindow : Window
     private void OnDismissSession(object sender, RoutedEventArgs e)
     {
         if (SessionOf(sender) is { } session) _store.Dismiss(session);
-    }
-
-    private void OnCopyResume(object sender, RoutedEventArgs e)
-    {
-        if (SessionOf(sender) is not { } session) return;
-        try { System.Windows.Clipboard.SetText(WindowFocus.ResumeCommand(session)); }
-        catch { /* clipboard was held by another process */ }
     }
 
     private void OnAllow(object sender, RoutedEventArgs e) =>
