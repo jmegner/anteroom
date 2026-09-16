@@ -87,11 +87,13 @@ public sealed class IpcServer : IDisposable
 
                     Log.Write($"ipc {message.Event} wantsDecision={message.WantsDecision} tool={message.ToolName}");
 
-                    if (!message.WantsDecision)
-                    {
-                        MessageReceived?.Invoke(message);
-                        continue;
-                    }
+                    // Record every message, gated or not. PreToolUse used to go straight to the
+                    // gate without ever reaching the store, and it is the event that carries the
+                    // session's window - so between turns a tab knew of no window at all and Open
+                    // had nothing to focus, falling through to resuming in a fresh terminal.
+                    MessageReceived?.Invoke(message);
+
+                    if (!message.WantsDecision) continue;
 
                     var handler = DecisionRequested;
                     var response = handler is null
