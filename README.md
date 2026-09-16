@@ -209,7 +209,9 @@ Stored in `%APPDATA%\Anteroom\settings.json`.
   list cannot exist without them.
 - **Permission prompts** — the master switch for answering prompts from the tabs, the per-tool
   list of what gets held, and how long a held call waits. Off, and empty, by default.
-- **Forget a session after** — drops tabs for sessions that have gone silent that long.
+- **Remove idle tabs after** — drops a session's tab once it has had no hook activity for that
+  long, so tabs do not pile up when a terminal is closed without firing `SessionEnd`. The Claude
+  session is unaffected and its tab returns on the next event; note a starred tab is swept as well.
 
 ## The tab panel
 

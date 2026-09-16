@@ -204,9 +204,9 @@
                         </Grid.ColumnDefinitions>
                         <CheckBox x:Name="StartupBox" Grid.Column="0" Content="Start Anteroom when I sign in"
                                   VerticalAlignment="Center" Margin="0" />
-                        <TextBlock Grid.Column="1" Text="Forget a session after" VerticalAlignment="Center"
-                                   Margin="0,0,6,0" />
-                        <ComboBox x:Name="StaleBox" Grid.Column="2" />
+                        <TextBlock Grid.Column="1" Text="Remove idle tabs after" VerticalAlignment="Center"
+                                   Margin="0,0,6,0" ToolTip="Drops a session's tab after this long with no hook activity. The Claude session itself keeps running, and its tab comes back on the next event. A tab still showing a star is removed too, so a shorter setting can clear a reminder you have not dealt with yet." />
+                        <ComboBox x:Name="StaleBox" Grid.Column="2" ToolTip="Drops a session's tab after this long with no hook activity. The Claude session itself keeps running, and its tab comes back on the next event. A tab still showing a star is removed too, so a shorter setting can clear a reminder you have not dealt with yet." />
                     </Grid>
 
                     <Grid Margin="0,6,0,0">
