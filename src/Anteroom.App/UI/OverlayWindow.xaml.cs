@@ -24,10 +24,12 @@ public partial class OverlayWindow : Window
     private readonly ObservableCollection<SessionState> _attention = new();
     private readonly ObservableCollection<SessionState> _idle = new();
 
-    /// <summary>null = follow the sessions; true/false = the user overrode it with the handle or the close button.</summary>
+    /// <summary>null = follow the sessions; true/false = the user overrode it with the handle or the collapse arrow.</summary>
     private bool? _manualOverride;
 
-    private bool _isCollapsed = true;
+    // Must match the XAML's starting state (Panel visible, Handle collapsed): SetCollapsed
+    // no-ops when the flag already agrees, so a wrong value here wedges the panel open.
+    private bool _isCollapsed;
     private bool _allowClose;
     private double _dragStartWidth;
     private (int X, int Y, int Width, int Height, bool Topmost) _lastPlacement;
