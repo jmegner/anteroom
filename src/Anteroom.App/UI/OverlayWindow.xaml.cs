@@ -110,6 +110,9 @@ public partial class OverlayWindow : Window
             ? $"Anteroom · {waiting} waiting"
             : "Anteroom";
 
+        // Nothing is starred, so there is nothing for Clear all to clear.
+        ClearAll.Visibility = waiting > 0 ? Visibility.Visible : Visibility.Collapsed;
+
         IdleLabel.Text = _idle.Count == 1 ? "1 idle session" : $"{_idle.Count} idle sessions";
         IdleToggle.Visibility = _idle.Count > 0 && waiting > 0 ? Visibility.Visible : Visibility.Collapsed;
 

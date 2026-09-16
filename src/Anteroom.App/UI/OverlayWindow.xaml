@@ -196,7 +196,7 @@
                                    Foreground="{StaticResource Text}" FontSize="12" FontWeight="SemiBold"
                                    VerticalAlignment="Center" />
 
-                        <Button Grid.Column="1" Style="{StaticResource GlyphButton}" Content="Clear all"
+                        <Button x:Name="ClearAll" Grid.Column="1" Style="{StaticResource GlyphButton}" Content="Clear all"
                                 Click="OnDismissAll" ToolTip="Clear every star without opening anything" />
                         <Button Grid.Column="2" Style="{StaticResource GlyphButton}" Content="⚙"
                                 Click="OnOpenSettings" ToolTip="Advanced settings" />
