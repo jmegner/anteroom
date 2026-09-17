@@ -261,9 +261,14 @@ public partial class OverlayWindow : Window
     private static SessionState? SessionOf(object sender) =>
         (sender as FrameworkElement)?.DataContext as SessionState;
 
-    private void OnOpenSession(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// The whole tab is the Open target. Buttons inside it (Allow, Deny, Dismiss) mark the click
+    /// handled, so they never fall through to here.
+    /// </summary>
+    private void OnOpenSession(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (SessionOf(sender) is not { } session) return;
+        e.Handled = true;
 
         // Raised counts as done too: the window is alive and now flashing in the taskbar, which is
         // as far as Windows will let us take the user.
