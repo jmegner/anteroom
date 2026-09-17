@@ -265,8 +265,10 @@ public partial class OverlayWindow : Window
     {
         if (SessionOf(sender) is not { } session) return;
 
+        // Raised counts as done too: the window is alive and now flashing in the taskbar, which is
+        // as far as Windows will let us take the user.
         var result = WindowFocus.Open(session);
-        if (result is OpenResult.Focused or OpenResult.Resumed) _store.Dismiss(session);
+        if (result is OpenResult.Focused or OpenResult.Raised or OpenResult.Resumed) _store.Dismiss(session);
         if (result == OpenResult.CopiedCommand)
             session.PendingText = $"That terminal is gone. Copied: {WindowFocus.ResumeCommand(session)}";
     }
