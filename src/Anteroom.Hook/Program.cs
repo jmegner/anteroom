@@ -23,6 +23,7 @@ internal static class Program
         {
             string stdin = ReadStdin();
             var message = Build(args.Length > 0 ? args[0] : null, stdin);
+            if (message is null) return 0; // not a Claude Code session; see IsForeignAgent
 
             if (message.WantsDecision)
             {
@@ -52,7 +53,8 @@ internal static class Program
         return "";
     }
 
-    private static HookMessage Build(string? eventArg, string payload)
+    /// <summary>Builds the message to forward, or null if this event is not ours to report.</summary>
+    private static HookMessage? Build(string? eventArg, string payload)
     {
         var msg = new HookMessage { Event = eventArg ?? "" };
 
@@ -66,6 +68,9 @@ internal static class Program
             {
                 using var doc = JsonDocument.Parse(payload);
                 var root = doc.RootElement;
+
+                if (IsForeignAgent(root)) return null;
+
                 msg.SessionId = Str(root, "session_id") ?? "";
                 msg.Cwd = Str(root, "cwd");
                 msg.TranscriptPath = Str(root, "transcript_path");
@@ -111,6 +116,15 @@ internal static class Program
 
         return msg;
     }
+
+    /// <summary>
+    /// True when the payload came from something other than Claude Code. Cursor reads the same
+    /// ~/.claude/settings.json and runs these hooks for its own agent turns, but its payload is not
+    /// Claude's: no cwd, no permission_mode, a conversation id Claude cannot resume, and hooks that
+    /// run from a process owning no window. It also runs the tool regardless of what we answer. So
+    /// there is nothing Anteroom can usefully do with one - bail before the pipe, costing it nothing.
+    /// </summary>
+    private static bool IsForeignAgent(JsonElement root) => root.TryGetProperty("cursor_version", out _);
 
     /// <summary>Claude's PreToolUse decision envelope.</summary>
     private static string BuildDecision(HookResponse response)

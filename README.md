@@ -84,6 +84,9 @@ Safety properties, all verified:
   time and the settings dialog reports *Needs updating* until you re-register.
 - **Skipped where it would be noise:** `bypassPermissions`, `plan`, `auto` and `dontAsk`, plus
   `acceptEdits` for `Write`/`Edit`/`NotebookEdit`.
+- **Skipped when the mode is unreadable.** A payload with no `permission_mode` at all is not one
+  Anteroom understands well enough to gate, so it passes through. Holding a call the user never
+  expected is worse than one prompt they would have seen anyway.
 - **Dismiss releases.** Dismissing or clearing a held tab hands the call back to Claude's prompt
   rather than stranding a blocked hook.
 

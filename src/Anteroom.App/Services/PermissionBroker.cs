@@ -39,8 +39,9 @@ public sealed class PermissionBroker
         if (!settings.IsToolGated(message.ToolName))
             return HookResponse.PassThrough();
 
-        if (SkipForMode(message))
-            return HookResponse.PassThrough($"Anteroom stays out of {message.PermissionMode} mode");
+        var skip = SkipReason(message);
+        if (skip is not null)
+            return HookResponse.PassThrough(skip);
 
         var pending = new PendingPermission(message, TimeSpan.FromSeconds(Math.Clamp(settings.PermissionHoldSeconds, 10, 600)));
 
@@ -70,16 +71,25 @@ public sealed class PermissionBroker
     }
 
     /// <summary>
-    /// Permission modes where Claude would not have prompted anyway. Holding the call there would
-    /// mean Anteroom asking a question the user has already answered globally.
+    /// Why this call is being handed straight back, or null to hold it. Holding a call the user has
+    /// already answered globally would mean Anteroom asking a question nobody was going to be asked.
     /// </summary>
-    private static bool SkipForMode(HookMessage message)
+    private static string? SkipReason(HookMessage message)
     {
         var mode = message.PermissionMode;
-        if (string.IsNullOrWhiteSpace(mode)) return false;
 
-        if (mode is "bypassPermissions" or "plan" or "auto" or "dontAsk") return true;
-        return mode == "acceptEdits" && GateableTools.IsEditTool(message.ToolName);
+        // No mode at all means the payload is not one we understand well enough to gate: fail
+        // closed. A held call the user never expected is worse than a prompt they would have got
+        // anyway, and a caller that omits permission_mode may ignore our decision too.
+        if (string.IsNullOrWhiteSpace(mode))
+            return "Anteroom does not gate calls whose permission mode it cannot see";
+
+        if (mode is "bypassPermissions" or "plan" or "auto" or "dontAsk")
+            return $"Anteroom stays out of {mode} mode";
+
+        return mode == "acceptEdits" && GateableTools.IsEditTool(message.ToolName)
+            ? $"Anteroom stays out of {mode} mode"
+            : null;
     }
 
     /// <summary>
