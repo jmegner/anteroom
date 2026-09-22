@@ -99,6 +99,18 @@ Advanced settings.
 Hooks carry no session title, so the tab name is the cwd's folder name, and the subtitle is the
 session's first user prompt, read out of the transcript JSONL.
 
+### Cursor runs these hooks too, and Anteroom ignores it
+
+Cursor reads `~/.claude/settings.json` as a hook source, so from Cursor 3.21 on it runs
+`anteroom-hook.exe` for its own agent turns — a Cursor conversation driving a GPT model, nothing to
+do with Claude Code. Its payload is not Claude's: no `cwd`, no `permission_mode`, a
+`conversation_id` that `claude --resume` cannot open, a hook process owning no window to focus, and
+no `Notification` event at all. Cursor also runs the tool whatever the hook answers, so a gated call
+would put a question on screen about work that had already happened.
+
+The shim therefore recognises a Cursor payload by its `cursor_version` field and exits before
+touching the pipe. Cursor sessions never reach Anteroom, and cost it nothing beyond a process start.
+
 ## Build and run
 
 Needs the .NET 7 SDK.
